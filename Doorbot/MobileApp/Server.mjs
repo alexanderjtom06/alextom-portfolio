@@ -3,16 +3,19 @@ import fs from 'node:fs/promises';
 import url from 'node:url';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import { WebSocket } from 'ws';
 import 'dotenv/config';
 
+dotenv.config({ path: './secrets.env' });
+
 const app = express();
-const port = Secrets.env.PORT;
-const secretKey = Secrets.env.JWT_SECRET;
+const port = process.env.PORT;
+const secretKey = process.env.JWT_SECRET;
 
 app.use(express.json());
 
 app.post('/login', async (req,res) => {
-    const{username, password, role} = req.body;
+    const{username, password} = req.body;
     const rawData = await fs.readFile('Users.json', 'utf8');
     const dataArray = JSON.parse(rawData);
 
@@ -96,6 +99,12 @@ wss.on('connection', (ws, req) => {
             }
         });
 
+
+        ws.on('close',() =>{
+            activeConnections.delete(userRole)
+            console.log(`Client ${userRole} logged out`);
+        });
+
     }
     catch{
         console.error("Invalid or expired token");
@@ -104,11 +113,11 @@ wss.on('connection', (ws, req) => {
 });
 
 
-app.listen(PORT, () => {
-    console.log(`Listening on port ${PORT}`);
+app.listen(port, () => {
+    console.log(`Listening on port ${port}`);
 });
 
-server.on('upgrade', (request, socket, head) =>{
+app.on('upgrade', (request, socket, head) =>{
     wss.handleUpgrade(request, socket, head, (wsSocket) =>{
         wss.emit('connection', wsSocket, request);
     });
